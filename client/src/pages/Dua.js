@@ -85,6 +85,32 @@ const Dua = () => {
     }
   };
 
+  const getAISuggestions = async () => {
+    if (!feeling.trim()) return;
+    
+    // In production, this would call an AI service
+    // For demo, using sample suggestions
+    const suggestions = {
+      sad: [
+        {
+          arabic: 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',
+          translation: 'Our Lord, give us in this world good and in the Hereafter good and protect us from the punishment of the Fire'
+        }
+      ],
+      stressed: [
+        {
+          arabic: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+          translation: 'Sufficient for us is Allah, and He is the best disposer of affairs'
+        }
+      ],
+      grateful: [
+        {
+          arabic: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+          translation: 'All praise is due to Allah, Lord of the worlds'
+        }
+      ]
+    };
+
     const feeling_lower = feeling.toLowerCase();
     if (feeling_lower.includes('sad') || feeling_lower.includes('upset')) {
       setAiSuggestions(suggestions.sad);
@@ -235,5 +261,6 @@ const Dua = () => {
       )}
     </div>
   );
+};
 
 export default Dua;
