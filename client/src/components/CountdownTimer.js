@@ -1,64 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { differenceInSeconds, parse } from 'date-fns';
 
 const CountdownTimer = () => {
-  const [iftarTime, setIftarTime] = useState('');
-  const [suhoorTime, setSuhoorTime] = useState('');
   const [timeToIftar, setTimeToIftar] = useState('');
   const [timeToSuhoor, setTimeToSuhoor] = useState('');
   const [currentMeal, setCurrentMeal] = useState('');
 
   useEffect(() => {
-    // In production, fetch actual iftar/suhoor times based on location
-    // For demo, using example times
-    setIftarTime('18:42');
-    setSuhoorTime('04:30');
+    const timer = setInterval(calculateTimes, 1000);
+    return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (iftarTime && suhoorTime) {
-      const timer = setInterval(calculateTimes, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [iftarTime, suhoorTime]);
 
   const calculateTimes = () => {
     const now = new Date();
-    const today = new Date();
     
-    // Parse iftar time
-    const [iftarHour, iftarMinute] = iftarTime.split(':').map(Number);
-    const iftar = new Date(today);
-    iftar.setHours(iftarHour, iftarMinute, 0, 0);
-
-    // Parse suhoor time (suhoor is before Fajr, so it's for the next day if we're past it)
-    const [suhoorHour, suhoorMinute] = suhoorTime.split(':').map(Number);
-    const suhoor = new Date(today);
-    suhoor.setHours(suhoorHour, suhoorMinute, 0, 0);
-
-    // Adjust if we're past suhoor
+    // Set iftar time (Maghrib) - typically around sunset
+    const iftar = new Date();
+    iftar.setHours(18, 30, 0, 0); // 6:30 PM example time
+    
+    // Set suhoor time (end of suhoor - before Fajr)
+    const suhoor = new Date();
+    suhoor.setHours(4, 30, 0, 0); // 4:30 AM example time
+    
+    // Adjust if we're past these times
+    if (now > iftar) {
+      iftar.setDate(iftar.getDate() + 1);
+    }
     if (now > suhoor) {
       suhoor.setDate(suhoor.getDate() + 1);
     }
 
-    // Determine which is next
-    const iftarDiff = iftar > now ? differenceInSeconds(iftar, now) : null;
-    const suhoorDiff = suhoor > now ? differenceInSeconds(suhoor, now) : null;
+    // Calculate time differences
+    const iftarDiff = Math.floor((iftar - now) / 1000);
+    const suhoorDiff = Math.floor((suhoor - now) / 1000);
 
-    if (iftarDiff && (iftarDiff < suhoorDiff || !suhoorDiff)) {
+    // Format countdown
+    const formatTime = (seconds) => {
+      if (seconds < 0) return '00:00:00';
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    setTimeToIftar(formatTime(iftarDiff));
+    setTimeToSuhoor(formatTime(suhoorDiff));
+    
+    // Determine which is next
+    if (iftarDiff < suhoorDiff) {
       setCurrentMeal('Iftar');
-      const hours = Math.floor(iftarDiff / 3600);
-      const minutes = Math.floor((iftarDiff % 3600) / 60);
-      const seconds = iftarDiff % 60;
-      setTimeToIftar(`${hours}h ${minutes}m ${seconds}s`);
-      setTimeToSuhoor('');
-    } else if (suhoorDiff) {
+    } else {
       setCurrentMeal('Suhoor');
-      const hours = Math.floor(suhoorDiff / 3600);
-      const minutes = Math.floor((suhoorDiff % 3600) / 60);
-      const seconds = suhoorDiff % 60;
-      setTimeToSuhoor(`${hours}h ${minutes}m ${seconds}s`);
-      setTimeToIftar('');
     }
   };
 
@@ -70,14 +61,11 @@ const CountdownTimer = () => {
           <h3 className="text-xl font-bold">Iftar Time</h3>
           <span className="text-2xl">🌅</span>
         </div>
-        <p className="text-4xl font-bold mb-2">{iftarTime}</p>
+        <p className="text-4xl font-bold mb-2">{timeToIftar}</p>
         {currentMeal === 'Iftar' ? (
-          <div>
-            <p className="text-lg opacity-90">Time until Iftar:</p>
-            <p className="text-3xl font-mono font-bold">{timeToIftar}</p>
-          </div>
+          <p className="text-lg opacity-90">Time until Iftar</p>
         ) : (
-          <p className="text-lg opacity-90">Iftar will be at {iftarTime}</p>
+          <p className="text-lg opacity-90">Next: Iftar</p>
         )}
       </div>
 
@@ -87,14 +75,11 @@ const CountdownTimer = () => {
           <h3 className="text-xl font-bold">Suhoor Time</h3>
           <span className="text-2xl">🌙</span>
         </div>
-        <p className="text-4xl font-bold mb-2">{suhoorTime}</p>
+        <p className="text-4xl font-bold mb-2">{timeToSuhoor}</p>
         {currentMeal === 'Suhoor' ? (
-          <div>
-            <p className="text-lg opacity-90">Time until Suhoor:</p>
-            <p className="text-3xl font-mono font-bold">{timeToSuhoor}</p>
-          </div>
+          <p className="text-lg opacity-90">Time until Suhoor ends</p>
         ) : (
-          <p className="text-lg opacity-90">Suhoor ends at {suhoorTime} tomorrow</p>
+          <p className="text-lg opacity-90">Next: Suhoor</p>
         )}
       </div>
     </div>

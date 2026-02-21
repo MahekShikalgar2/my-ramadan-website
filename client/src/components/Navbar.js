@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { FaMoon, FaSun, FaBars, FaTimes } from 'react-icons/fa';
-import { MdDashboard, MdQuran, MdAccessTime } from 'react-icons/md';
-import { GiPrayer, GiCompass, GiBookCover } from 'react-icons/gi';
+import { MdDashboard, MdAccessTime } from 'react-icons/md';
+import { GiPrayer, GiCompass } from 'react-icons/gi';
 import { RiUserHeartLine } from 'react-icons/ri';
 
 const Navbar = () => {
@@ -16,8 +16,8 @@ const Navbar = () => {
   const navItems = [
     { name: 'Home', path: '/', icon: '🏠' },
     { name: 'Prayer Times', path: '/prayer-times', icon: <GiPrayer /> },
-    { name: 'Quran', path: '/quran', icon: <MdQuran /> },
-    { name: 'Duas', path: '/dua', icon: <GiBookCover /> },
+    { name: 'Quran', path: '/quran', icon: '📖' },
+    { name: 'Duas', path: '/dua', icon: '🤲' },
     { name: 'Tasbeeh', path: '/tasbeeh', icon: '📿' },
     { name: 'Planner', path: '/planner', icon: '📅' },
     { name: 'Goals', path: '/goals', icon: '🎯' },

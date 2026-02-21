@@ -3,12 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { FaCheck, FaStar, FaHandHoldingHeart, FaQuran, FaPrayingHands } from 'react-icons/fa';
 import { format, addDays, isToday } from 'date-fns';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Planner = () => {
   const { user } = useAuth();
   const [currentDay, setCurrentDay] = useState(1);
   const [checklist, setChecklist] = useState({});
   const [completedDays, setCompletedDays] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const tasks = [
     { id: 'fajr', name: 'Fajr Prayer', icon: <FaPrayingHands />, color: 'bg-blue-500' },
@@ -23,39 +25,81 @@ const Planner = () => {
   ];
 
   useEffect(() => {
-    // Calculate current Ramadan day (simplified)
+    // Calculate current Ramadan day
     const startDate = new Date('2024-03-10');
     const today = new Date();
-    const diffTime = Math.abs(today - startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    setCurrentDay(Math.min(diffDays, 30));
+    startDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    const diffTime = today.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    setCurrentDay(Math.min(Math.max(diffDays, 1), 30));
 
     loadChecklist();
   }, []);
 
   const loadChecklist = async () => {
+    setLoading(true);
     if (user) {
       try {
-        const response = await axios.get('/api/users/checklist');
-        setChecklist(response.data);
+        const token = localStorage.getItem('token');
+        console.log('Loading checklist for user:', user.email);
+        
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/users/checklist`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        console.log('Checklist loaded:', response.data);
+        
+        // Ensure we have an object
+        const loadedData = response.data || {};
+        setChecklist(loadedData);
+        
+        // Calculate completed days from loaded data
+        const completed = Object.keys(loadedData).filter(day => {
+          const tasks = loadedData[day];
+          return tasks && Object.values(tasks).every(v => v === true);
+        });
+        setCompletedDays(completed);
+        
       } catch (error) {
         console.error('Error loading checklist:', error);
+        toast.error('Failed to load your planner data');
+        setChecklist({});
       }
     } else {
       // Load from localStorage for non-logged-in users
       const saved = localStorage.getItem('ramadan-checklist');
       if (saved) {
-        setChecklist(JSON.parse(saved));
+        try {
+          const parsed = JSON.parse(saved);
+          setChecklist(parsed);
+          
+          // Calculate completed days
+          const completed = Object.keys(parsed).filter(day => {
+            const tasks = parsed[day];
+            return tasks && Object.values(tasks).every(v => v === true);
+          });
+          setCompletedDays(completed);
+        } catch (e) {
+          console.error('Error parsing localStorage data:', e);
+          setChecklist({});
+        }
       }
     }
+    setLoading(false);
   };
 
-  const toggleTask = (day, taskId) => {
+  const toggleTask = async (day, taskId) => {
+    // Create new checklist state
     const newChecklist = { ...checklist };
     if (!newChecklist[day]) {
       newChecklist[day] = {};
     }
     newChecklist[day][taskId] = !newChecklist[day]?.[taskId];
+    
+    // Update state
     setChecklist(newChecklist);
 
     // Calculate completed days
@@ -65,11 +109,31 @@ const Planner = () => {
     });
     setCompletedDays(completed);
 
-    // Save
+    // Save to backend for logged-in users
     if (user) {
-      axios.post('/api/users/checklist', newChecklist).catch(console.error);
+      try {
+        const token = localStorage.getItem('token');
+        
+        console.log('Saving checklist:', newChecklist);
+        
+        await axios.post(
+          `${process.env.REACT_APP_API_URL}/users/checklist`,
+          newChecklist,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        toast.success('Progress saved!');
+        
+        // Trigger dashboard refresh
+        window.dispatchEvent(new Event('dashboard-refresh'));
+      } catch (error) {
+        console.error('Error saving checklist:', error);
+        toast.error('Failed to save progress');
+      }
     } else {
+      // Save to localStorage for non-logged-in users
       localStorage.setItem('ramadan-checklist', JSON.stringify(newChecklist));
+      toast.success('Progress saved locally');
     }
   };
 
@@ -80,6 +144,14 @@ const Planner = () => {
     const completed = tasksForDay.filter(v => v).length;
     return Math.round((completed / tasks.length) * 100);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -112,6 +184,24 @@ const Planner = () => {
           </span>
         </div>
       </div>
+
+      {/* Login Prompt for non-logged-in users */}
+      {!user && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 text-center">
+          <p className="text-yellow-800 dark:text-yellow-200">
+            You're using local storage. <a href="/login" className="font-semibold underline">Login</a> to save your progress to the cloud!
+          </p>
+        </div>
+      )}
+
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Current Day: {currentDay} | Saved Days: {Object.keys(checklist).length}
+          </p>
+        </div>
+      )}
 
       {/* Daily Planner Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
