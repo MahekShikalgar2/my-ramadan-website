@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaMinus, FaRedo, FaSave, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaMinus, FaRedo, FaSave } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const Tasbeeh = () => {
   const { user } = useAuth();
@@ -9,7 +10,7 @@ const Tasbeeh = () => {
   const [target, setTarget] = useState(33);
   const [dhikr, setDhikr] = useState('SubhanAllah');
   const [savedCounts, setSavedCounts] = useState([]);
-  const [beads, setBeads] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const dhikrList = [
     { name: 'SubhanAllah', meaning: 'Glory be to Allah', count: 33 },
@@ -19,29 +20,29 @@ const Tasbeeh = () => {
     { name: 'Astaghfirullah', meaning: 'I seek forgiveness from Allah', count: 100 }
   ];
 
+  // Fetch saved counts when component mounts
   useEffect(() => {
-    // Create virtual beads
-    setBeads(Array(target).fill(false));
-  }, [target]);
+    if (user) {
+      fetchSavedCounts();
+    }
+  }, [user]);
 
-  useEffect(() => {
-    // Update beads based on count
-    const newBeads = Array(target).fill(false).map((_, index) => index < count);
-    setBeads(newBeads);
-  }, [count, target]);
+  const fetchSavedCounts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/users/tasbeeh/recent`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSavedCounts(response.data);
+    } catch (error) {
+      console.error('Error fetching saved counts:', error);
+    }
+  };
 
   const increment = () => {
     if (count < target) {
       setCount(count + 1);
-      if (count + 1 === target) {
-        // Play completion sound or show notification
-        if (Notification.permission === 'granted') {
-          new Notification('Tasbeeh Complete!', {
-            body: `You've completed ${count + 1} ${dhikr}`,
-            icon: '/crescent-moon.png'
-          });
-        }
-      }
     }
   };
 
@@ -56,18 +57,37 @@ const Tasbeeh = () => {
   };
 
   const saveCount = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Please login to save your tasbeeh');
+      return;
+    }
 
+    if (count === 0) {
+      toast.error('Please do some dhikr first');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await axios.post('/api/users/tasbeeh', {
-        name: dhikr,
-        count: count
-      });
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/users/tasbeeh`,
+        { name: dhikr, count: count },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       
-      setSavedCounts([...savedCounts, { name: dhikr, count, date: new Date() }]);
+      toast.success('Tasbeeh saved successfully!');
+      
+      // Refresh saved counts
+      await fetchSavedCounts();
+      
+      // Reset counter
       reset();
     } catch (error) {
       console.error('Error saving tasbeeh:', error);
+      toast.error(error.response?.data?.message || 'Failed to save tasbeeh');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,13 +96,6 @@ const Tasbeeh = () => {
     setTarget(selected.count);
     reset();
   };
-
-  // Request notification permission
-  useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -113,26 +126,9 @@ const Tasbeeh = () => {
           ))}
         </div>
 
-        {/* Beads Display */}
-        <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-          <div className="flex flex-wrap justify-center gap-2">
-            {beads.map((active, index) => (
-              <div
-                key={index}
-                className={`w-8 h-8 rounded-full transition-colors cursor-pointer transform hover:scale-110 ${
-                  active
-                    ? 'bg-primary-600 shadow-lg'
-                    : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-                onClick={() => index < count ? setCount(index) : setCount(index + 1)}
-              />
-            ))}
-          </div>
-        </div>
-
         {/* Counter Display */}
         <div className="text-center mb-8">
-          <div className="text-6xl font-bold text-primary-600 dark:text-primary-400 mb-2">
+          <div className="text-7xl font-bold text-primary-600 dark:text-primary-400 mb-2">
             {count}
           </div>
           <div className="text-gray-600 dark:text-gray-300">
@@ -168,13 +164,22 @@ const Tasbeeh = () => {
           {user && (
             <button
               onClick={saveCount}
-              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-              disabled={count === 0}
+              disabled={loading || count === 0}
+              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
-              <FaSave /> Save
+              {loading ? 'Saving...' : <><FaSave /> Save</>}
             </button>
           )}
         </div>
+
+        {/* Login Prompt */}
+        {!user && (
+          <div className="mt-6 text-center">
+            <p className="text-gray-500 dark:text-gray-400">
+              <a href="/login" className="text-primary-600 hover:underline">Login</a> to save your tasbeeh counts
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Saved Counts */}

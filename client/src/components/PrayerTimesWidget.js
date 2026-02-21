@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useLocation } from '../hooks/useLocation';
 import { format, differenceInSeconds } from 'date-fns';
 import { FaMapMarkerAlt, FaSyncAlt } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const PrayerTimesWidget = () => {
   const { location, error: locationError } = useLocation();
@@ -30,16 +31,26 @@ const PrayerTimesWidget = () => {
     try {
       setLoading(true);
       const date = new Date();
+      
+      // Using Aladhan API directly (no backend needed for prayer times)
       const response = await axios.get(
-        `http://api.aladhan.com/v1/timings/${date.getTime()         /1000}?latitude=${location.lat}&longitude=${location.lng}&method=2`
+        `https://api.aladhan.com/v1/timings/${Math.floor(date.getTime() / 1000)}`,
+        {
+          params: {
+            latitude: location.lat,
+            longitude: location.lng,
+            method: 2 // ISNA method
+          }
+        }
       );
       
       const timings = response.data.data.timings;
       setPrayerTimes(timings);
       setError(null);
     } catch (err) {
+      console.error('Error fetching prayer times:', err);
       setError('Failed to fetch prayer times');
-      console.error(err);
+      toast.error('Could not load prayer times');
     } finally {
       setLoading(false);
     }
@@ -106,7 +117,7 @@ const PrayerTimesWidget = () => {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
         <p className="text-red-500 dark:text-red-400">
-          {error || locationError}. Please enable location access or try again later.
+          {error || locationError}
         </p>
         <button 
           onClick={fetchPrayerTimes}

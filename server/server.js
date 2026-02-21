@@ -2,39 +2,58 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+// Import routes
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const prayerRoutes = require('./routes/prayers');
+const duaRoutes = require('./routes/duas');
+const hadithRoutes = require('./routes/hadiths');
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true
+}));
 app.use(express.json());
 
-// Test route to check if server is running
+// Test route
 app.get('/', (req, res) => {
-    res.json({ message: 'Ramadan Kareem API is running!' });
+    res.json({ 
+        message: 'Ramadan Kareem API is running!',
+        endpoints: {
+            auth: '/api/auth',
+            users: '/api/users',
+            prayers: '/api/prayers',
+            duas: '/api/duas',
+            hadiths: '/api/hadiths'
+        }
+    });
 });
 
-// MongoDB connection - FIXED VERSION
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/prayers', prayerRoutes);
+app.use('/api/duas', duaRoutes);
+app.use('/api/hadiths', hadithRoutes);
+
+// MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/ramadan-website';
 
 mongoose.connect(MONGODB_URI)
 .then(() => {
     console.log('✅ Connected to MongoDB successfully');
-    console.log(`📦 Database: ramadan-website`);
+    console.log('📦 Database:', MONGODB_URI.split('/').pop());
 })
 .catch(err => {
     console.error('❌ MongoDB connection error:', err.message);
-    console.log('💡 Troubleshooting tips:');
-    console.log('   1. Make sure MongoDB is installed');
-    console.log('   2. Run: "C:\\Program Files\\MongoDB\\Server\\6.0\\bin\\mongod.exe" --dbpath=C:\\data\\db');
-    console.log('   3. Check if MongoDB service is running');
+    console.log('💡 Make sure MongoDB is running on:', MONGODB_URI);
 });
-
-// Routes
-app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -47,6 +66,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📍 Local: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📝 Test the API at http://localhost:${PORT}/`);
 });

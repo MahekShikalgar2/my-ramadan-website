@@ -17,7 +17,6 @@ A complete Islamic web application to help Muslims manage their worship during R
 - 👤 **User authentication**  
 - 🌓 **Dark / Light mode toggle**  
 - 📱 **Fully responsive design**
-
 ---
 
 ## 🛠️ Tech Stack
